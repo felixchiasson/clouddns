@@ -6,6 +6,9 @@ use std::{fs::File, future::Future, io::Read, net::Ipv4Addr, str::FromStr};
 use tokio::signal;
 use tokio::time::{sleep, Duration};
 
+const IP_CHECK_URL: &str = "https://api64.ipify.org?format=json";
+const API_BASE_URL: &str = "https://api.cloudflare.com/client/v4";
+
 // Establish the structure of the Domain as it pertains to the Cloudflare API
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -79,7 +82,7 @@ impl CloudflareDdns {
 
     // Using ipify to get the current IP address, seems to be the one with the least restrictions
     async fn get_current_ip(&self) -> Result<Ipv4Addr, anyhow::Error> {
-        let response = reqwest::get("https://api64.ipify.org?format=json")
+        let response = reqwest::get(IP_CHECK_URL)
             .await?
             .json::<TraceResponse>()
             .await?;
@@ -96,10 +99,7 @@ impl CloudflareDdns {
     async fn get_record_content(&self, zone_id: &str, domain: &Domain) -> Result<ApiDnsRecord> {
         let response = self
             .client
-            .get(&format!(
-                "https://api.cloudflare.com/client/v4/zones/{}/dns_records",
-                zone_id
-            ))
+            .get(&format!("{}/zones/{}/dns_records", API_BASE_URL, zone_id))
             .bearer_auth(self.config.api_token.clone())
             .header("Content-Type", "application/json")
             .send()
@@ -138,8 +138,8 @@ impl CloudflareDdns {
         let response = self
             .client
             .patch(&format!(
-                "https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}",
-                zone_id, record_content.id
+                "{}/zones/{}/dns_records/{}",
+                API_BASE_URL, zone_id, record_content.id
             ))
             .bearer_auth(self.config.api_token.clone())
             .header("Content-Type", "application/json")
