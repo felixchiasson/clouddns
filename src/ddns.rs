@@ -2,7 +2,8 @@ use anyhow::{Context, Result};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::{self, json};
-use std::{fs::File, io::Read, net::Ipv4Addr, str::FromStr};
+use std::{fs::File, future::Future, io::Read, net::Ipv4Addr, str::FromStr};
+use tokio::signal;
 use tokio::time::{sleep, Duration};
 
 // Establish the structure of the Domain as it pertains to the Cloudflare API
@@ -193,14 +194,52 @@ impl CloudflareDdns {
         Ok(())
     }
 
-    pub async fn run(&mut self) -> Result<(), anyhow::Error> {
+    pub async fn shutdown_signal() {
+        let ctrl_c = async {
+            signal::ctrl_c()
+                .await
+                .expect("Failed to install Ctrl+C handler");
+        };
+
+        #[cfg(unix)]
+        let terminate = async {
+            signal::unix::signal(signal::unix::SignalKind::terminate())
+                .expect("Failed to install signal handler")
+                .recv()
+                .await;
+        };
+
+        #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+        tokio::select! {
+            _ = ctrl_c => println!("Received Ctrl+C signal"),
+            _ = terminate => println!("Received termination signal"),
+        }
+    }
+
+    pub async fn run(&mut self, shutdown: impl Future<Output = ()>) -> Result<()> {
         let interval = Duration::from_secs(self.config.update_interval * 60);
 
-        loop {
-            if let Err(e) = self.update_all_records().await {
-                error!("Error updating records: {}", e);
-            }
-            sleep(interval).await;
+        if let Err(e) = self.update_all_records().await {
+            error!("Error during initial update: {}", e);
         }
+
+        tokio::pin!(shutdown);
+
+        loop {
+            tokio::select! {
+                _ = &mut shutdown => {
+                    info!("Shutdown signal received");
+                    break;
+                }
+                _ = sleep(interval) => {
+                    if let Err(e) = self.update_all_records().await {
+                        error!("Error updating records: {}", e);
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }

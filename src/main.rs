@@ -10,5 +10,5 @@ async fn main() -> Result<()> {
 
     // Create and run the DDNS updater
     let mut ddns = CloudflareDdns::new("config.yaml").await?;
-    ddns.run().await
+    ddns.run(CloudflareDdns::shutdown_signal()).await
 }
