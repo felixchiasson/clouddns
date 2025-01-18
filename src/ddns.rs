@@ -28,21 +28,23 @@ struct TraceResponse {
 }
 
 #[derive(Debug, Deserialize)]
-struct ApiDnsRecords {
+struct ApiDnsRecord {
     id: String,
     name: String,
     content: String,
+    #[serde(default)]
     proxied: bool,
     ttl: u32,
 }
 
 #[derive(Debug, Deserialize)]
-struct ApiDnsResponse {
-    result: Vec<ApiDnsRecords>,
+struct ApiResponse<T> {
+    result: T,
     success: bool,
+    #[serde(default)]
     errors: Vec<serde_json::Value>,
+    #[serde(default)]
     messages: Vec<serde_json::Value>,
-    result_info: serde_json::Value,
 }
 
 pub struct CloudflareDdns {
@@ -90,7 +92,7 @@ impl CloudflareDdns {
         }
     }
 
-    async fn get_record_content(&self, zone_id: &str, domain: &Domain) -> Result<ApiDnsRecords> {
+    async fn get_record_content(&self, zone_id: &str, domain: &Domain) -> Result<ApiDnsRecord> {
         let response = self
             .client
             .get(&format!(
@@ -104,15 +106,19 @@ impl CloudflareDdns {
 
         let text = response.text().await?;
 
-        let parsed: ApiDnsResponse = serde_json::from_str(&text)?;
+        let parsed: ApiResponse<Vec<ApiDnsRecord>> = serde_json::from_str(&text).map_err(|e| {
+            anyhow::anyhow!("Failed to parse API response: {}. Response: {}", e, text)
+        })?;
 
-        let record = parsed
+        if !parsed.success {
+            return Err(anyhow::anyhow!("API request failed: {:?}", parsed.errors));
+        }
+
+        parsed
             .result
             .into_iter()
-            .find(|record| record.name == domain.record)
-            .ok_or_else(|| anyhow::anyhow!("Record not found"))?;
-
-        Ok(record)
+            .find(|record| record.name == domain.name)
+            .ok_or_else(|| anyhow::anyhow!("DNS record not found for domain: {}", domain.name))
     }
 
     async fn update_record(
@@ -144,12 +150,24 @@ impl CloudflareDdns {
                 "proxied": record_content.proxied, // keep the current conf
             }))?)
             .send()
-            .await?
-            .json::<ApiDnsResponse>()
             .await?;
 
-        info!("Record updated: {:?}", response.success);
+        let text = response.text().await?;
+        info!("Update Response: {}", text);
 
+        let update_response: ApiResponse<ApiDnsRecord> =
+            serde_json::from_str(&text).map_err(|e| {
+                anyhow::anyhow!("Failed to parse update response: {}. Response: {}", e, text)
+            })?;
+
+        if !update_response.success {
+            return Err(anyhow::anyhow!(
+                "Failed to update DNS record: {:?}",
+                update_response.errors
+            ));
+        }
+
+        info!("Record updated successfully");
         Ok(())
     }
 
@@ -164,7 +182,7 @@ impl CloudflareDdns {
             info!("Updating record for: {}", domain.record);
             match self.update_record(&zone_id, &current_ip, domain).await {
                 Ok(_) => {
-                    info!("Record up to date or updated");
+                    info!("Next record:");
                 }
                 Err(e) => {
                     error!("Failed to update record: {}", e);
