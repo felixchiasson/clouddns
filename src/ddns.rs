@@ -2,10 +2,7 @@ use anyhow::{Context, Result};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::{self, json};
-use std::fs::File;
-use std::io::Read;
-use std::net::Ipv4Addr;
-use std::str::FromStr;
+use std::{fs::File, io::Read, net::Ipv4Addr, str::FromStr};
 use tokio::time::{sleep, Duration};
 
 // Establish the structure of the Domain as it pertains to the Cloudflare API
@@ -106,7 +103,6 @@ impl CloudflareDdns {
             .await?;
 
         let text = response.text().await?;
-        info!("Raw API response: {}", text);
 
         let parsed: ApiDnsResponse = serde_json::from_str(&text)?;
 
@@ -128,7 +124,6 @@ impl CloudflareDdns {
         let record_content = self.get_record_content(zone_id, domain).await?;
 
         if record_content.content == ip.to_string() {
-            println!("Is this skipped?");
             info!("Record already up to date");
             return Ok(());
         }
@@ -146,7 +141,7 @@ impl CloudflareDdns {
                 "name": domain.record,
                 "content": ip.to_string(),
                 "ttl": self.config.record_ttl,
-                "proxied": record_content.proxied,
+                "proxied": record_content.proxied, // keep the current conf
             }))?)
             .send()
             .await?
@@ -166,7 +161,7 @@ impl CloudflareDdns {
         info!("Current IP: {}", current_ip);
 
         for domain in &self.config.domain_list {
-            println!("Updating record for: {}", domain.name);
+            println!("Updating record for: {}", domain.record);
             match self.update_record(&zone_id, &current_ip, domain).await {
                 Ok(_) => {
                     info!("Record up to date or updated");
