@@ -99,7 +99,7 @@ impl CloudflareDdns {
                 "https://api.cloudflare.com/client/v4/zones/{}/dns_records",
                 zone_id
             ))
-            .header("Authorization", format!("Bearer {}", self.config.api_token))
+            .bearer_auth(self.config.api_token.clone())
             .header("Content-Type", "application/json")
             .send()
             .await?;
@@ -140,7 +140,7 @@ impl CloudflareDdns {
                 "https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}",
                 zone_id, record_content.id
             ))
-            .header("Authorization", format!("Bearer {}", self.config.api_token))
+            .bearer_auth(self.config.api_token.clone())
             .header("Content-Type", "application/json")
             .body(serde_json::to_string(&json!({
                 "type": "A", // this can be programmed also?
@@ -182,7 +182,7 @@ impl CloudflareDdns {
             info!("Updating record for: {}", domain.record);
             match self.update_record(&zone_id, &current_ip, domain).await {
                 Ok(_) => {
-                    info!("Next record:");
+                    info!("Done.");
                 }
                 Err(e) => {
                     error!("Failed to update record: {}", e);
