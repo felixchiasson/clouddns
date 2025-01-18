@@ -161,7 +161,7 @@ impl CloudflareDdns {
         info!("Current IP: {}", current_ip);
 
         for domain in &self.config.domain_list {
-            println!("Updating record for: {}", domain.record);
+            info!("Updating record for: {}", domain.record);
             match self.update_record(&zone_id, &current_ip, domain).await {
                 Ok(_) => {
                     info!("Record up to date or updated");
