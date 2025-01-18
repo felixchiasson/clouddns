@@ -1,3 +1,5 @@
+mod api;
+mod config;
 mod ddns;
 use anyhow::Result;
 use ddns::CloudflareDdns;
