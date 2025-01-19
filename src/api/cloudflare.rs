@@ -3,6 +3,7 @@ use std::net::Ipv4Addr;
 use super::{client::DnsApiClient, models::*};
 use anyhow::Result;
 use async_trait::async_trait;
+use log::error;
 use serde_json::json;
 
 const API_BASE_URL: &str = "https://api.cloudflare.com/client/v4";
@@ -58,14 +59,12 @@ impl DnsApiClient for CloudflareClient {
             .await?;
 
         // Handle response
-        let text = response.text().await?;
-        let update_response: ApiResponse<ApiDnsRecord> = serde_json::from_str(&text)?;
+        let update_response: ApiResponse<ApiDnsRecord> = response.json().await?;
 
         if !update_response.success {
-            return Err(anyhow::anyhow!(
-                "Failed to update DNS record: {:?}",
-                update_response.errors
-            ));
+            let error_msg = format!("Failed to update DNS record: {:?}", update_response.errors);
+            error!("{}", error_msg);
+            return Err(anyhow::anyhow!(error_msg));
         }
 
         Ok(update_response.result)

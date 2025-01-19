@@ -27,6 +27,4 @@ pub struct ApiResponse<T> {
     pub success: bool,
     #[serde(default)]
     pub errors: Vec<serde_json::Value>,
-    #[serde(default)]
-    pub messages: Vec<serde_json::Value>,
 }
