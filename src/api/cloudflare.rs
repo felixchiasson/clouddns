@@ -62,9 +62,11 @@ impl DnsApiClient for CloudflareClient {
         let update_response: ApiResponse<ApiDnsRecord> = response.json().await?;
 
         if !update_response.success {
-            let error_msg = format!("Failed to update DNS record: {:?}", update_response.errors);
-            error!("{}", error_msg);
-            return Err(anyhow::anyhow!(error_msg));
+            error!("Failed to update DNS record: {:?}", &update_response.errors);
+            return Err(anyhow::anyhow!(
+                "Failed to update DNS record: {:?}",
+                &update_response.errors
+            ));
         }
 
         Ok(update_response.result)
@@ -72,10 +74,10 @@ impl DnsApiClient for CloudflareClient {
 }
 
 impl CloudflareClient {
-    pub fn new(api_token: String) -> Self {
+    pub fn new(api_token: &str) -> Self {
         Self {
             client: reqwest::Client::new(),
-            api_token,
+            api_token: api_token.to_string(),
         }
     }
 
@@ -83,7 +85,7 @@ impl CloudflareClient {
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
             "Authorization",
-            format!("Bearer {}", self.api_token).parse().unwrap(),
+            format!("Bearer {}", &self.api_token).parse().unwrap(),
         );
         headers.insert("Content-Type", "application/json".parse().unwrap());
         headers

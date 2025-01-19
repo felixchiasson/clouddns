@@ -28,10 +28,10 @@ impl CloudflareDdns {
         let config = Self::load_config(config_file)?;
 
         if let Err(e) = config.validate() {
-            return Err(anyhow::anyhow!("Invalid configuration: {}", e));
+            return Err(anyhow::anyhow!("Invalid configuration: {}", &e));
         }
 
-        let api_client = Box::new(CloudflareClient::new(config.api_token.clone()));
+        let api_client = Box::new(CloudflareClient::new(&config.api_token));
 
         Ok(Self {
             config,
@@ -69,7 +69,7 @@ impl CloudflareDdns {
 
     async fn update_all_records(&mut self) -> Result<(), anyhow::Error> {
         let current_ip = self.get_current_ip().await?;
-        let zone_id = self.config.zone_id.clone();
+        let zone_id = &self.config.zone_id;
 
         self.current_ip = Some(current_ip);
         info!("Current IP: {}", current_ip);
