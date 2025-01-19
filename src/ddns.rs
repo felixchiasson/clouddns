@@ -63,7 +63,7 @@ impl CloudflareDdns {
         // Handle error if the response is empty
         match ipv4_response {
             Ok(ip) => Ok(ip),
-            Err(e) => Err(anyhow::anyhow!("Failed to parse IP address: {}", e)),
+            Err(e) => Err(anyhow::anyhow!("Failed to parse IP address: {}", &e)),
         }
     }
 
@@ -72,10 +72,10 @@ impl CloudflareDdns {
         let zone_id = &self.config.zone_id;
 
         self.current_ip = Some(current_ip);
-        info!("Current IP: {}", current_ip);
+        info!("Current IP: {}", &current_ip);
 
         for domain in &self.config.domain_list {
-            info!("Updating record for: {}", domain.record);
+            info!("Updating record for: {}", &domain.record);
 
             let record = self.api_client.get_record(&zone_id, &domain.name).await?;
 
@@ -93,7 +93,7 @@ impl CloudflareDdns {
                     info!("Record updated successfully");
                 }
                 Err(e) => {
-                    error!("Failed to update record: {}", e);
+                    error!("Failed to update record: {}", &e);
                     return Err(e);
                 }
             }
@@ -129,7 +129,7 @@ impl CloudflareDdns {
         let interval = Duration::from_secs(self.config.update_interval * 60);
 
         if let Err(e) = self.update_all_records().await {
-            error!("Error during initial update: {}", e);
+            error!("Error during initial update: {}", &e);
         }
 
         tokio::pin!(shutdown);
@@ -142,7 +142,7 @@ impl CloudflareDdns {
                 }
                 _ = sleep(interval) => {
                     if let Err(e) = self.update_all_records().await {
-                        error!("Error updating records: {}", e);
+                        error!("Error updating records: {}", &e);
                     }
                 }
             }
