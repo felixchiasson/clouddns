@@ -77,9 +77,9 @@ impl CloudflareDdns {
         for domain in &self.config.domain_list {
             info!("Updating record for: {}", &domain.record);
 
-            let record = self.api_client.get_record(&zone_id, &domain.name).await?;
+            let record = self.api_client.get_record(&zone_id, &domain.record).await?;
 
-            if record.content == current_ip.to_string() {
+            if &record.content == &current_ip.to_string() {
                 info!("Record already up to date");
                 continue;
             }
