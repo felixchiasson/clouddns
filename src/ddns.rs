@@ -6,6 +6,7 @@ use serde::Deserialize;
 use std::{fs::File, future::Future, io::Read, net::Ipv4Addr, str::FromStr};
 use tokio::signal;
 use tokio::time::{sleep, Duration};
+use validator::Validate;
 
 const IP_CHECK_URL: &str = "https://api64.ipify.org?format=json";
 
@@ -25,6 +26,11 @@ pub struct CloudflareDdns {
 impl CloudflareDdns {
     pub async fn new(config_file: &str) -> Result<Self> {
         let config = Self::load_config(config_file)?;
+
+        if let Err(e) = config.validate() {
+            return Err(anyhow::anyhow!("Invalid configuration: {}", e));
+        }
+
         let api_client = Box::new(CloudflareClient::new(config.api_token.clone()));
 
         Ok(Self {
