@@ -11,6 +11,6 @@ async fn main() -> Result<()> {
     env_logger::init();
 
     // Create and run the DDNS updater
-    let mut ddns = CloudflareDdns::new("config.yaml").await?;
+    let mut ddns = CloudflareDdns::new("config.toml").await?;
     ddns.run(CloudflareDdns::shutdown_signal()).await
 }

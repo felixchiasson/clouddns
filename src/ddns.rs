@@ -41,13 +41,13 @@ impl CloudflareDdns {
     }
 
     fn load_config(config_file: &str) -> Result<Config> {
+        info!("Loading config from: {}", config_file);
         let mut file = File::open(config_file)
             .with_context(|| format!("Failed to open config file: {}", config_file))?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)
             .with_context(|| format!("Failed to read config file: {}", config_file))?;
-
-        serde_yaml::from_str(&contents)
+        toml::from_str(&contents)
             .with_context(|| format!("Failed to parse config file: {}", config_file))
     }
 
@@ -69,32 +69,38 @@ impl CloudflareDdns {
 
     async fn update_all_records(&mut self) -> Result<(), anyhow::Error> {
         let current_ip = self.get_current_ip().await?;
-        let zone_id = &self.config.zone_id;
-
         self.current_ip = Some(current_ip);
         info!("Current IP: {}", &current_ip);
 
-        for domain in &self.config.domain_list {
-            info!("Updating record for: {}", &domain.record);
+        for zone in &self.config.zones {
+            for domain in &zone.domains {
+                for record in &domain.records {
+                    let full_record = if record == "@" {
+                        domain.name.to_string()
+                    } else {
+                        format!("{}.{}", record, domain.name)
+                    };
 
-            let record = self.api_client.get_record(&zone_id, &domain.record).await?;
+                    info!("Updating record: {}", &full_record);
 
-            if &record.content == &current_ip.to_string() {
-                info!("Record already up to date");
-                continue;
-            }
+                    let record = self.api_client.get_record(&zone.id, &full_record).await?;
 
-            match self
-                .api_client
-                .update_record(&zone_id, &record, &current_ip, self.config.record_ttl)
-                .await
-            {
-                Ok(_) => {
-                    info!("Record updated successfully");
-                }
-                Err(e) => {
-                    error!("Failed to update record: {}", &e);
-                    return Err(e);
+                    if &record.content == &current_ip.to_string() {
+                        info!("Record already up to date");
+                        continue;
+                    }
+
+                    match self
+                        .api_client
+                        .update_record(&zone.id, &record, &current_ip, self.config.record_ttl)
+                        .await
+                    {
+                        Ok(_) => info!("Record updated successfully"),
+                        Err(e) => {
+                            error!("Failed to update record: {}", &e);
+                            return Err(e);
+                        }
+                    }
                 }
             }
         }
