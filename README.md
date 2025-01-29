@@ -2,7 +2,7 @@
 
 This is an attempt to force myself to be productive and learn Rust. If you come across this repository, somehow, please be critical of its contents.
 
-config.yaml
+config.toml
 ```
 api_token = "token_here"
 update_interval = 5                                    # minutes
