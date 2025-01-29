@@ -4,15 +4,21 @@ This is an attempt to force myself to be productive and learn Rust. If you come 
 
 config.yaml
 ```
-api_token: "api_token"
-update_interval: 5 # minutes
-proxied: true # not currently implemented, uses the current proxy settings in Cloudflare
-record_ttl: 1
-zone_id: "zone_id"
-domain_list:
-  - name: "domain.tld"
-    record: "subdomain.domain.tld"
-  - name: "domain.org"
-    record: "domain.org"
+api_token = "token_here"
+update_interval = 5                                    # minutes
+record_ttl = 120                                       # seconds
+
+[[zones]]
+id = "zone_id"
+
+[[zones.domains]]
+name = "domain.name"
+records = ["@", "subdomain"]
+
+[[zones.domains]]
+name = "domain2.name"
+records = ["@", "subdomain"]
+
+
 
 ```
