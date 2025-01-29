@@ -11,7 +11,7 @@ record_ttl: 1
 zone_id: "zone_id"
 domain_list:
   - name: "domain.tld"
-    record: "subdomain.tld"
+    record: "subdomain.domain.tld"
   - name: "domain.org"
     record: "domain.org"
 
